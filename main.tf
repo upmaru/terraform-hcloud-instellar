@@ -78,7 +78,7 @@ resource "hcloud_placement_group" "nodes_group" {
   name = "${var.cluster_name}-instellar-placement"
   type = "spread"
 
-  label = {
+  labels = {
     "cluster_name" = "${var.cluster_name}"
     "platform"     = "instellar"
   }
