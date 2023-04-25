@@ -73,13 +73,25 @@ resource "hcloud_server" "bastion" {
   }
 }
 
+
+resource "hcloud_placement_group" "nodes_group" {
+  name = "${var.cluster_name}-instellar-placement"
+  type = "spread"
+
+  label = {
+    "cluster_name" = "${var.cluster_name}"
+    "platform"     = "instellar"
+  }
+}
+
 resource "hcloud_server" "nodes" {
-  count       = var.cluster_size
-  image       = var.image
-  name        = "${var.cluster_name}-node-0${count.index + 1}"
-  location    = var.location
-  server_type = var.node_size
-  ssh_keys    = [hcloud_ssh_key.bastion.name]
+  count              = var.cluster_size
+  image              = var.image
+  name               = "${var.cluster_name}-node-0${count.index + 1}"
+  location           = var.location
+  server_type        = var.node_size
+  ssh_keys           = [hcloud_ssh_key.bastion.name]
+  placement_group_id = hcloud_placement_group.nodes_group.id
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
@@ -96,6 +108,7 @@ resource "hcloud_server" "nodes" {
     network_id = hcloud_network.cluster_vpc.id
   }
 }
+
 
 resource "hcloud_firewall" "nodes_firewall" {
   name = "${var.cluster_name}-instellar-nodes"
