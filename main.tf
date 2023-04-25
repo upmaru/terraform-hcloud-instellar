@@ -105,7 +105,7 @@ resource "hcloud_firewall" "nodes_firewall" {
     direction  = "in"
     protocol   = "tcp"
     port       = "22"
-    source_ips = [hcloud_server.bastion.ipv4_address]
+    source_ips = ["10.0.0.0/16"]
   }
 
   # Enable instellar to communicate with nodes
