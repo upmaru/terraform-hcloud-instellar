@@ -39,7 +39,7 @@ variable "node_size" {
 
 variable "subnet_ip_range" {
   description = "Subnet ip range"
-  ip_range    = "10.0.1.0/24"
+  default     = "10.0.1.0/24"
 }
 
 variable "ssh_keys" {
