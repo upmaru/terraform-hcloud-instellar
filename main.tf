@@ -52,6 +52,7 @@ resource "hcloud_server" "bastion" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
+    ip = "10.0.0.2"
   }
 
   connection {
@@ -79,7 +80,7 @@ resource "hcloud_server" "nodes" {
   name     = "${var.cluster_name}-node-0${count.index + 1}"
   location = var.location
   size     = var.node_size
-  ssh_keys = [digitalocean_ssh_key.bastion.name]
+  ssh_keys = [hcloud_ssh_key.bastion.name]
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
@@ -179,8 +180,6 @@ resource "hcloud_firewall" "nodes_firewall" {
 
 resource "hcloud_firewall" "bastion_firewall" {
   name = "${var.cluster_name}-instellar-bastion"
-
-  droplet_ids = digitalocean_droplet.bastion[*].id
 
   # SSH from any where
   rule {
