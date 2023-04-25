@@ -119,6 +119,36 @@ resource "hcloud_firewall" "nodes_firewall" {
     ]
   }
 
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "443"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0"
+    ]
+  }
+
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "80"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0"
+    ]
+  }
+
+  rule {
+    direction = "in"
+    protocol  = "tcp"
+    port      = "49152"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0"
+    ]
+  }
+
   # Enable full cross-node communication tcp
   rule {
     direction  = "in"
@@ -138,14 +168,12 @@ resource "hcloud_firewall" "nodes_firewall" {
   rule {
     direction  = "in"
     protocol   = "icmp"
-    port       = "any"
     source_ips = ["10.0.0.0/16"]
   }
 
   rule {
     direction = "out"
     protocol  = "icmp"
-    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -195,7 +223,6 @@ resource "hcloud_firewall" "bastion_firewall" {
   rule {
     direction = "out"
     protocol  = "icmp"
-    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
