@@ -52,7 +52,6 @@ resource "hcloud_server" "bastion" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
-    ip         = "10.0.0.2"
   }
 
   connection {
@@ -75,12 +74,12 @@ resource "hcloud_server" "bastion" {
 }
 
 resource "hcloud_server" "nodes" {
-  count    = var.cluster_size
-  image    = var.image
-  name     = "${var.cluster_name}-node-0${count.index + 1}"
-  location = var.location
-  size     = var.node_size
-  ssh_keys = [hcloud_ssh_key.bastion.name]
+  count       = var.cluster_size
+  image       = var.image
+  name        = "${var.cluster_name}-node-0${count.index + 1}"
+  location    = var.location
+  server_type = var.node_size
+  ssh_keys    = [hcloud_ssh_key.bastion.name]
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
@@ -106,7 +105,7 @@ resource "hcloud_firewall" "nodes_firewall" {
     direction  = "in"
     protocol   = "tcp"
     port       = "22"
-    source_ips = [hcloud_server.bastion.network.ip]
+    source_ips = [hcloud_server.bastion.ipv4_address]
   }
 
   # Enable instellar to communicate with nodes
