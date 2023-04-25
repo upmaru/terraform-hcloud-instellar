@@ -75,12 +75,12 @@ resource "hcloud_server" "bastion" {
 }
 
 resource "hcloud_server" "nodes" {
-  count    = var.cluster_size
-  image    = var.image
-  name     = "${var.cluster_name}-node-0${count.index + 1}"
-  location = var.location
-  size     = var.node_size
-  ssh_keys = [hcloud_ssh_key.bastion.name]
+  count       = var.cluster_size
+  image       = var.image
+  name        = "${var.cluster_name}-node-0${count.index + 1}"
+  location    = var.location
+  server_type = var.node_size
+  ssh_keys    = [hcloud_ssh_key.bastion.name]
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
