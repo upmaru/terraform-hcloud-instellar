@@ -41,7 +41,7 @@ resource "hcloud_server" "bastion" {
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
-    "platform" = "instellar"
+    "platform"     = "instellar"
     "type"         = "bastion"
   }
 
@@ -83,8 +83,8 @@ resource "hcloud_server" "nodes" {
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
-    "platform" = "instellar"
-    "type" = "node"
+    "platform"     = "instellar"
+    "type"         = "node"
   }
 
   public_net {
@@ -102,17 +102,17 @@ resource "hcloud_firewall" "nodes_firewall" {
 
   # Enable bastion node to SSH in
   rule {
-    direction = "in"
-    protocol = "tcp"
-    port = "22"
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "22"
     source_ips = [hcloud_server.bastion.network.ip]
   }
 
   # Enable instellar to communicate with nodes
   rule {
     direction = "in"
-    protocol = "tcp"
-    port = "8443"
+    protocol  = "tcp"
+    port      = "8443"
     source_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -121,31 +121,31 @@ resource "hcloud_firewall" "nodes_firewall" {
 
   # Enable full cross-node communication tcp
   rule {
-    direction = "in"
-    protocol = "tcp"
-    port = "any"
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "any"
     source_ips = ["10.0.0.0/16"]
   }
 
   # Enable full cross-node communication
   rule {
-    direction = "in"
-    protocol = "udp"
-    port = "any"
+    direction  = "in"
+    protocol   = "udp"
+    port       = "any"
     source_ips = ["10.0.0.0/16"]
   }
 
   rule {
-    direction = "in"
-    protocol = "icmp"
-    port = "any"
+    direction  = "in"
+    protocol   = "icmp"
+    port       = "any"
     source_ips = ["10.0.0.0/16"]
   }
 
   rule {
     direction = "out"
-    protocol = "icmp"
-    port = "any"
+    protocol  = "icmp"
+    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -154,8 +154,8 @@ resource "hcloud_firewall" "nodes_firewall" {
 
   rule {
     direction = "out"
-    protocol = "tcp"
-    port = "any"
+    protocol  = "tcp"
+    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -164,8 +164,8 @@ resource "hcloud_firewall" "nodes_firewall" {
 
   rule {
     direction = "out"
-    protocol = "udp"
-    port = "any"
+    protocol  = "udp"
+    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -185,8 +185,8 @@ resource "hcloud_firewall" "bastion_firewall" {
   # SSH from any where
   rule {
     direction = "in"
-    protocol = "tcp"
-    port = "22"
+    protocol  = "tcp"
+    port      = "22"
     source_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -196,8 +196,8 @@ resource "hcloud_firewall" "bastion_firewall" {
   # Enable all outbound traffic
   rule {
     direction = "out"
-    protocol = "icmp"
-    port = "any"
+    protocol  = "icmp"
+    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -206,8 +206,8 @@ resource "hcloud_firewall" "bastion_firewall" {
 
   rule {
     direction = "out"
-    protocol = "tcp"
-    port = "any"
+    protocol  = "tcp"
+    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
@@ -216,14 +216,14 @@ resource "hcloud_firewall" "bastion_firewall" {
 
   rule {
     direction = "out"
-    protocol = "udp"
-    port = "any"
+    protocol  = "udp"
+    port      = "any"
     destination_ips = [
       "0.0.0.0/0",
       "::/0"
     ]
   }
-  
+
   apply_to {
     label_selector = "type=bastion"
   }

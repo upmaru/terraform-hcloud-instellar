@@ -9,7 +9,7 @@ variable "cluster_name" {
 
 variable "cluster_size" {
   description = "How big do you want your cluster to be 1, 3, 5 or more."
-  default = 1
+  default     = 1
 }
 
 variable "image" {
