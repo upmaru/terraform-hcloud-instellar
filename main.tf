@@ -52,7 +52,6 @@ resource "hcloud_server" "bastion" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
-    ip         = "10.0.0.2"
   }
 
   connection {
@@ -106,7 +105,7 @@ resource "hcloud_firewall" "nodes_firewall" {
     direction  = "in"
     protocol   = "tcp"
     port       = "22"
-    source_ips = [hcloud_server.bastion.network.ip]
+    source_ips = [hcloud_server.bastion.ipv4_address]
   }
 
   # Enable instellar to communicate with nodes
