@@ -52,7 +52,7 @@ resource "hcloud_server" "bastion" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
-    ip         = "10.1.0.1"
+    ip         = "10.0.1.255"
   }
 
   connection {
@@ -93,6 +93,8 @@ resource "hcloud_server" "nodes" {
   server_type        = var.node_size
   ssh_keys           = [hcloud_ssh_key.bastion.name]
   placement_group_id = hcloud_placement_group.nodes_group.id
+  delete_protection  = true
+  rebuild_protection = true
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
