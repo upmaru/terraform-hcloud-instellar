@@ -109,7 +109,7 @@ resource "hcloud_server" "nodes" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
-    ip         = "10.0.1.${count.index} + 1"
+    ip         = "10.0.1.${count.index + 1}"
   }
 }
 
