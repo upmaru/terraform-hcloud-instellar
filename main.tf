@@ -52,6 +52,7 @@ resource "hcloud_server" "bastion" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
+    ip         = "10.1.0.1"
   }
 
   connection {
@@ -106,6 +107,7 @@ resource "hcloud_server" "nodes" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
+    ip         = "10.0.1.${count.index} + 1"
   }
 }
 
