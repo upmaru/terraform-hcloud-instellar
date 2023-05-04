@@ -32,6 +32,16 @@ resource "hcloud_network_subnet" "cluster_subnet" {
   ip_range     = var.subnet_ip_range
 }
 
+# data "http" "join_token" {
+#   count  = var.cluster_size
+#   url    = "https://eogzo99ulmqnzvq.m.pipedream.net/${count.index + 1}"
+#   method = "GET"
+
+#   request_headers = {
+#     Accept = "application/json"
+#   }
+# }
+
 resource "hcloud_server" "bastion" {
   image       = var.image
   name        = "${var.cluster_name}-bastion"
@@ -85,6 +95,18 @@ resource "hcloud_placement_group" "nodes_group" {
   }
 }
 
+data "cloudinit_config" "config" {
+  gzip          = true
+  base64_encode = true
+
+  # Main cloud-config configuration file.
+  part {
+    filename     = "init.cfg"
+    content_type = "text/cloud-config"
+    content      = templatefile("${path.module}/templates/cloud-init.tpl", {})
+  }
+}
+
 resource "hcloud_server" "nodes" {
   count              = var.cluster_size
   image              = var.image
@@ -95,6 +117,44 @@ resource "hcloud_server" "nodes" {
   placement_group_id = hcloud_placement_group.nodes_group.id
   delete_protection  = true
   rebuild_protection = true
+  user_data          = data.cloudinit_config.config.rendered
+
+  lifecycle {
+    ignore_changes = [
+      location,
+      ssh_keys,
+      user_data,
+      image,
+    ]
+  }
+
+  connection {
+    type                = "ssh"
+    user                = "root"
+    host                = "10.0.1.${count.index + 1}"
+    private_key         = tls_private_key.bastion_key.private_key_openssh
+    bastion_user        = "root"
+    bastion_host        = hcloud_server.bastion.ipv4_address
+    bastion_private_key = tls_private_key.terraform_cloud.private_key_openssh
+  }
+
+  provisioner "file" {
+    content = templatefile("${path.module}/templates/lxd-init.tpl", {
+      ip_address   = "10.0.1.${count.index + 1}"
+      server_name  = self.name
+      storage_size = "30"
+    })
+
+    destination = "/tmp/lxd-init.yml"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "cloud-init status --wait",
+      "lxd init --preseed < /tmp/lxd-init.yml",
+      "reboot"
+    ]
+  }
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
