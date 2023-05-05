@@ -42,6 +42,21 @@ resource "hcloud_network_subnet" "cluster_subnet" {
 #   }
 # }
 
+resource "ssh_resource" "trust_token" {
+  host         = [for obj in hcloud_server.nodes[0].network : upper(obj.ip)][0]
+  bastion_host = hcloud_server.bastion.ipv4_address
+
+  user         = "root"
+  bastion_user = "root"
+
+  private_key         = tls_private_key.bastion_key.private_key_openssh
+  bastion_private_key = tls_private_key.terraform_cloud.private_key_openssh
+
+  commands = [
+    "lxc config trust add --name instellar | sed '1d'"
+  ]
+}
+
 resource "hcloud_server" "bastion" {
   image       = var.image
   name        = "${var.cluster_name}-bastion"
@@ -151,8 +166,7 @@ resource "hcloud_server" "nodes" {
   provisioner "remote-exec" {
     inline = [
       "cloud-init status --wait",
-      "lxd init --preseed < /tmp/lxd-init.yml",
-      "reboot"
+      "lxd init --preseed < /tmp/lxd-init.yml"
     ]
   }
 
@@ -329,4 +343,8 @@ resource "hcloud_firewall" "bastion_firewall" {
   apply_to {
     label_selector = "type=bastion"
   }
+}
+
+output "trust_token" {
+  value = ssh_resource.trust_token.result
 }
