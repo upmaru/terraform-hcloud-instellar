@@ -2,75 +2,39 @@ provider "hcloud" {
   token = var.hcloud_token
 }
 
-resource "tls_private_key" "terraform_cloud" {
-  algorithm = "ED25519"
+locals {
+  bootstrap_ip_address = "10.0.1.253"
 }
 
-resource "tls_private_key" "bastion_key" {
-  algorithm = "ED25519"
+resource "ssh_resource" "trust_token" {
+  host         = [for obj in hcloud_server.bootstrap_node.network : upper(obj.ip)][0]
+  bastion_host = hcloud_server.bastion.ipv4_address
+
+  user         = "root"
+  bastion_user = "root"
+
+  private_key         = tls_private_key.bastion_key.private_key_openssh
+  bastion_private_key = tls_private_key.terraform_cloud.private_key_openssh
+
+  commands = [
+    "lxc config trust add --name instellar | sed '1d; /^$/d'"
+  ]
 }
 
-resource "hcloud_ssh_key" "terraform_cloud" {
-  name       = "${var.cluster_name}-terraform-cloud"
-  public_key = tls_private_key.terraform_cloud.public_key_openssh
-}
+resource "ssh_resource" "cluster_join_token" {
+  count        = var.cluster_size
+  host         = [for obj in hcloud_server.bootstrap_node.network : upper(obj.ip)][0]
+  bastion_host = hcloud_server.bastion.ipv4_address
 
-resource "hcloud_ssh_key" "bastion" {
-  name       = "${var.cluster_name}-bastion"
-  public_key = tls_private_key.bastion_key.public_key_openssh
-}
+  user         = "root"
+  bastion_user = "root"
 
-resource "hcloud_network" "cluster_vpc" {
-  name     = "${var.cluster_name}-instellar-vpc"
-  ip_range = "10.0.0.0/16"
-}
+  private_key         = tls_private_key.bastion_key.private_key_openssh
+  bastion_private_key = tls_private_key.terraform_cloud.private_key_openssh
 
-resource "hcloud_network_subnet" "cluster_subnet" {
-  network_id   = hcloud_network.cluster_vpc.id
-  type         = "cloud"
-  network_zone = var.region
-  ip_range     = var.subnet_ip_range
-}
-
-resource "hcloud_server" "bastion" {
-  image       = var.image
-  name        = "${var.cluster_name}-bastion"
-  location    = var.location
-  server_type = var.bastion_size
-  ssh_keys    = concat(var.ssh_keys, [hcloud_ssh_key.terraform_cloud.name])
-
-  labels = {
-    "cluster_name" = "${var.cluster_name}"
-    "platform"     = "instellar"
-    "type"         = "bastion"
-  }
-
-  public_net {
-    ipv4_enabled = true
-    ipv6_enabled = true
-  }
-
-  network {
-    network_id = hcloud_network.cluster_vpc.id
-  }
-
-  connection {
-    type        = "ssh"
-    user        = "root"
-    host        = self.ipv4_address
-    private_key = tls_private_key.terraform_cloud.private_key_openssh
-  }
-
-  provisioner "file" {
-    content     = tls_private_key.bastion_key.private_key_openssh
-    destination = "/root/.ssh/id_ed25519"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "chmod 600 /root/.ssh/id_ed25519"
-    ]
-  }
+  commands = [
+    "lxc cluster add ${var.cluster_name}-node-${format("%02d", count.index + 1)} | sed '1d; /^$/d'"
+  ]
 }
 
 
@@ -84,14 +48,65 @@ resource "hcloud_placement_group" "nodes_group" {
   }
 }
 
-resource "hcloud_server" "nodes" {
-  count              = var.cluster_size
+data "cloudinit_config" "config" {
+  gzip          = true
+  base64_encode = true
+
+  # Main cloud-config configuration file.
+  part {
+    filename     = "init.cfg"
+    content_type = "text/cloud-config"
+    content      = templatefile("${path.module}/templates/cloud-init.tpl", {})
+  }
+}
+
+
+resource "hcloud_server" "bootstrap_node" {
   image              = var.image
-  name               = "${var.cluster_name}-node-0${count.index + 1}"
+  name               = "${var.cluster_name}-bootstrap-node"
   location           = var.location
   server_type        = var.node_size
   ssh_keys           = [hcloud_ssh_key.bastion.name]
   placement_group_id = hcloud_placement_group.nodes_group.id
+  delete_protection  = true
+  rebuild_protection = true
+  user_data          = data.cloudinit_config.config.rendered
+
+  lifecycle {
+    ignore_changes = [
+      location,
+      ssh_keys,
+      user_data,
+      image,
+    ]
+  }
+
+  connection {
+    type                = "ssh"
+    user                = "root"
+    host                = local.bootstrap_ip_address
+    private_key         = tls_private_key.bastion_key.private_key_openssh
+    bastion_user        = "root"
+    bastion_host        = hcloud_server.bastion.ipv4_address
+    bastion_private_key = tls_private_key.terraform_cloud.private_key_openssh
+  }
+
+  provisioner "file" {
+    content = templatefile("${path.module}/templates/lxd-init.yml.tpl", {
+      ip_address   = local.bootstrap_ip_address
+      server_name  = self.name
+      storage_size = var.storage_size
+    })
+
+    destination = "/tmp/lxd-init.yml"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "cloud-init status --wait",
+      "lxd init --preseed < /tmp/lxd-init.yml"
+    ]
+  }
 
   labels = {
     "cluster_name" = "${var.cluster_name}"
@@ -106,163 +121,72 @@ resource "hcloud_server" "nodes" {
 
   network {
     network_id = hcloud_network.cluster_vpc.id
+    ip         = local.bootstrap_ip_address
   }
 }
 
+resource "hcloud_server" "nodes" {
+  count              = var.cluster_size
+  image              = var.image
+  name               = "${var.cluster_name}-node-${format("%02d", count.index + 1)}"
+  location           = var.location
+  server_type        = var.node_size
+  ssh_keys           = [hcloud_ssh_key.bastion.name]
+  placement_group_id = hcloud_placement_group.nodes_group.id
+  delete_protection  = true
+  rebuild_protection = true
+  user_data          = data.cloudinit_config.config.rendered
 
-resource "hcloud_firewall" "nodes_firewall" {
-  name = "${var.cluster_name}-instellar-nodes"
-
-  # Enable bastion node to SSH in
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "22"
-    source_ips = ["10.0.0.0/16"]
-  }
-
-  # Enable instellar to communicate with nodes
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "8443"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0"
+  lifecycle {
+    ignore_changes = [
+      location,
+      ssh_keys,
+      user_data,
+      image,
     ]
   }
 
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "443"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0"
+  connection {
+    type                = "ssh"
+    user                = "root"
+    host                = "10.0.1.${count.index + 1}"
+    private_key         = tls_private_key.bastion_key.private_key_openssh
+    bastion_user        = "root"
+    bastion_host        = hcloud_server.bastion.ipv4_address
+    bastion_private_key = tls_private_key.terraform_cloud.private_key_openssh
+  }
+
+  provisioner "file" {
+    content = templatefile("${path.module}/templates/lxd-join.yml.tpl", {
+      ip_address   = "10.0.1.${count.index + 1}"
+      join_token   = ssh_resource.cluster_join_token[count.index].result
+      storage_size = var.storage_size
+    })
+
+    destination = "/tmp/lxd-join.yml"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "cloud-init status --wait",
+      "lxd init --preseed < /tmp/lxd-join.yml",
+      "shutdown -r +1"
     ]
   }
 
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "80"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
+  labels = {
+    "cluster_name" = "${var.cluster_name}"
+    "platform"     = "instellar"
+    "type"         = "node"
   }
 
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "49152"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
+  public_net {
+    ipv4_enabled = true
+    ipv6_enabled = true
   }
 
-  # Enable full cross-node communication tcp
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "any"
-    source_ips = ["10.0.0.0/16"]
-  }
-
-  # Enable full cross-node communication
-  rule {
-    direction  = "in"
-    protocol   = "udp"
-    port       = "any"
-    source_ips = ["10.0.0.0/16"]
-  }
-
-  rule {
-    direction  = "in"
-    protocol   = "icmp"
-    source_ips = ["10.0.0.0/16"]
-  }
-
-  rule {
-    direction = "out"
-    protocol  = "icmp"
-    destination_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-  }
-
-  rule {
-    direction = "out"
-    protocol  = "tcp"
-    port      = "any"
-    destination_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-  }
-
-  rule {
-    direction = "out"
-    protocol  = "udp"
-    port      = "any"
-    destination_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-  }
-
-  apply_to {
-    label_selector = "type=node"
-  }
-}
-
-resource "hcloud_firewall" "bastion_firewall" {
-  name = "${var.cluster_name}-instellar-bastion"
-
-  # SSH from any where
-  rule {
-    direction = "in"
-    protocol  = "tcp"
-    port      = "22"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-  }
-
-  # Enable all outbound traffic
-  rule {
-    direction = "out"
-    protocol  = "icmp"
-    destination_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-  }
-
-  rule {
-    direction = "out"
-    protocol  = "tcp"
-    port      = "any"
-    destination_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-  }
-
-  rule {
-    direction = "out"
-    protocol  = "udp"
-    port      = "any"
-    destination_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-  }
-
-  apply_to {
-    label_selector = "type=bastion"
+  network {
+    network_id = hcloud_network.cluster_vpc.id
+    ip         = "10.0.1.${count.index + 1}"
   }
 }

@@ -12,6 +12,10 @@ variable "cluster_size" {
   default     = 1
 }
 
+variable "storage_size" {
+  description = "How big is the storage dedicated to the cluster"
+}
+
 variable "image" {
   description = "Image type of choice default is Ubuntu 22.04"
   default     = "ubuntu-22.04"

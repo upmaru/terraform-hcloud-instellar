@@ -2,6 +2,9 @@ terraform {
   required_version = ">= 1.0.0"
 
   required_providers {
+    ssh = {
+      source = "loafoe/ssh"
+    }
     hcloud = {
       source  = "hetznercloud/hcloud"
       version = "~> 1.38"
