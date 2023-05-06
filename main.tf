@@ -6,7 +6,6 @@ locals {
   bootstrap_ip_address = "10.0.1.253"
 }
 
-
 resource "ssh_resource" "trust_token" {
   host         = [for obj in hcloud_server.bootstrap_node.network : upper(obj.ip)][0]
   bastion_host = hcloud_server.bastion.ipv4_address
@@ -96,7 +95,7 @@ resource "hcloud_server" "bootstrap_node" {
     content = templatefile("${path.module}/templates/lxd-init.yml.tpl", {
       ip_address   = local.bootstrap_ip_address
       server_name  = self.name
-      storage_size = "30"
+      storage_size = var.storage_size
     })
 
     destination = "/tmp/lxd-init.yml"
@@ -159,8 +158,9 @@ resource "hcloud_server" "nodes" {
 
   provisioner "file" {
     content = templatefile("${path.module}/templates/lxd-join.yml.tpl", {
-      ip_address = "10.0.1.${count.index + 1}"
-      join_token = ssh_resource.cluster_join_token[count.index].result
+      ip_address   = "10.0.1.${count.index + 1}"
+      join_token   = ssh_resource.cluster_join_token[count.index].result
+      storage_size = var.storage_size
     })
 
     destination = "/tmp/lxd-join.yml"
