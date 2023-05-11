@@ -55,9 +55,9 @@ If you wish to add a node into the cluster you can modify the `cluster_topology`
 
 ```diff
 cluster_topology = [
-  {id = 1, name = "apple"},
-  {id = 2, name = "watermelon"},
-+ {id = 3, name = "orange"}
+  {id = 1, name = "apple", size = "cpx11"},
+  {id = 2, name = "watermelon", size = "cpx11"},
++ {id = 3, name = "orange", size = "cpx11"}
 ]
 ```
 
@@ -65,9 +65,9 @@ Then run `terraform apply` it will automatically scale your cluster up and add `
 
 ```diff
 cluster_topology = [
-  {id = 1, name = "apple"},
-- {id = 2, name = "watermelon"},
-  {id = 3, name = "orange"}
+  {id = 1, name = "apple", size = "cpx11"},
+- {id = 2, name = "watermelon", size = "cpx11"},
+  {id = 3, name = "orange", size = "cpx11"}
 ]
 ```
 
