@@ -7,13 +7,23 @@ variable "cluster_name" {
   description = "Name of your cluster"
 }
 
-variable "cluster_size" {
-  description = "How big do you want your cluster to be 1, 3, 5 or more."
-  default     = 1
+variable "cluster_topology" {
+  type = list(object({
+    id   = number
+    name = string
+    size = optional(string, "cpx11")
+  }))
+  description = "How many nodes do you want in your cluster?"
+  default     = []
 }
 
 variable "storage_size" {
   description = "How big is the storage dedicated to the cluster"
+}
+
+variable "protect_leader" {
+  description = "Protect the node marked with database-leader"
+  default     = true
 }
 
 variable "image" {
