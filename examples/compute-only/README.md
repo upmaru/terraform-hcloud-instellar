@@ -11,7 +11,6 @@ module "instellar" {
 
   hcloud_token = var.hcloud_token
   cluster_name = "fruits"
-  vpc_ip_range = "10.0.2.0/24"
   cluster_topology = [
     { id = 1, name = "apple", size = "cpx11" },
     { id = 2, name = "watermelon", size = "cpx11" }
