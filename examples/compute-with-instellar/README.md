@@ -8,10 +8,11 @@ variable "hcloud_token" {}
 locals {
   // replace with your cluster name
   cluster_name = "fruits"
+  provider_name = "hcloud"
 }
 
 module "compute" {
-  source = "upmaru/instellar/hcloud"
+  source = "upmaru/instellar/${local.provider_name}"
   version = "0.4.0"
 
   access_key   = var.aws_access_key
@@ -40,7 +41,7 @@ module "instellar" {
   auth_token      = var.instellar_auth_token
   cluster_name    = local.cluster_name
   region          = module.compute.region
-  provider_name   = "aws"
+  provider_name   = local.provider_name
   cluster_address = module.compute.cluster_address
   password_token  = module.compute.trust_token
 
