@@ -24,8 +24,7 @@ module "compute" {
     {id = 1, name = "apple", size = "cpx11"},
     {id = 2, name = "watermelon", size = "cpx11"},
   ]
-  volume_type  = "gp3"
-  storage_size = 40
+  storage_size = 30
   ssh_keys = [
     "zack-studio",
     "zack-one-eight"
