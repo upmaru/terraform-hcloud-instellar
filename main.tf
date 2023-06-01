@@ -244,7 +244,7 @@ resource "terraform_data" "reboot" {
 
   provisioner "remote-exec" {
     on_failure = continue
-    inline = self.input.commands
+    inline     = self.input.commands
   }
 }
 
