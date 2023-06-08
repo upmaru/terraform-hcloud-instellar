@@ -26,7 +26,7 @@ variable "instellar_auth_token" {}
 
 module "instellar" {
   source  = "upmaru/bootstrap/instellar"
-  version = "0.3.1"
+  version = "~> 0.3"
 
   host            = "https://staging-web.instellar.app"
   auth_token      = var.instellar_auth_token
