@@ -1,5 +1,5 @@
 output "cluster_address" {
-  value = "${hcloud_server.bootstrap_node.ipv4_address}:8443"
+  value = hcloud_server.bootstrap_node.ipv4_address
 }
 
 output "trust_token" {
